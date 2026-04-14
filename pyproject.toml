@@ -1,6 +1,6 @@
 [project]
 name = "hex_dora_node_mujoco"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.2"
 authors = [{ name = "Dong Zhaorui", email = "847235539@qq.com" }]
 description = "Dora Node for using Hex Mujoco"
 license = "Apache-2.0"

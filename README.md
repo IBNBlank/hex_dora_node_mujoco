@@ -6,10 +6,10 @@ Dora nodes for running MuJoCo robot simulations. Supports Archer Y6 (single-arm)
 
 | Node | Description | Inputs | Outputs |
 | --- | --- | --- | --- |
-| `hex-dora-mujoco-archer-y6` | Archer Y6 MuJoCo simulation (6-DOF arm with grip and camera) | `tick`, `arm_mit_cmd`, `arm_mit_comp_cmd`, `arm_pos_cmd`, `arm_pose_cmd`, `grip_mit_cmd`, `grip_mit_comp_cmd`, `grip_pos_cmd`, `reset` | `arm_motor`, `arm_end`, `grip_motor`, `obj_pose`, `color`, `depth` |
-| `hex-dora-mujoco-e3-desktop` | E3 Desktop MuJoCo simulation (dual 6-DOF arm with grips and 3 cameras) | `tick`, `left_arm_*_cmd`, `right_arm_*_cmd`, `left_grip_*_cmd`, `right_grip_*_cmd`, `reset` | `left_arm_motor`, `right_arm_motor`, `left_arm_end`, `right_arm_end`, `left_grip_motor`, `right_grip_motor`, `obj_pose`, `head_color`, `head_depth`, `left_color`, `left_depth`, `right_color`, `right_depth` |
-| `hex-dora-mujoco-test-archer-y6` | Archer Y6 state printer and image viewer for testing | `tick`, `arm_motor`, `arm_end`, `grip_motor`, `obj_pose`, `color`, `depth` | - |
-| `hex-dora-mujoco-test-e3-desktop` | E3 Desktop state printer and image viewer for testing | `tick`, `left_arm_motor`, `right_arm_motor`, `left_arm_end`, `right_arm_end`, `left_grip_motor`, `right_grip_motor`, `obj_pose`, `head_color`, `head_depth`, `left_color`, `left_depth`, `right_color`, `right_depth` | - |
+| `hex-dora-mujoco-archer-y6` | Archer Y6 MuJoCo simulation (6-DOF arm with grip and camera) | `tick`, `arm_cmd`, `grip_cmd`, `reset` | `arm_motor`, `arm_end`, `grip_motor`, `obj_pose`, `color`, `depth` |
+| `hex-dora-mujoco-e3-desktop` | E3 Desktop MuJoCo simulation (dual 6-DOF arm with grips and 3 cameras) | `tick`, `left_arm_cmd`, `right_arm_cmd`, `left_grip_cmd`, `right_grip_cmd`, `reset` | `left_arm_motor`, `right_arm_motor`, `left_arm_end`, `right_arm_end`, `left_grip_motor`, `right_grip_motor`, `obj_pose`, `head_color`, `head_depth`, `left_color`, `left_depth`, `right_color`, `right_depth` |
+| `hex-dora-mujoco-test-archer-y6` | Archer Y6 state printer and image viewer for testing | `tick`, `arm_motor`, `arm_end`, `grip_motor`, `obj_pose`, `color`, `depth` | `arm_cmd`, `grip_cmd` |
+| `hex-dora-mujoco-test-e3-desktop` | E3 Desktop state printer and image viewer for testing | `tick`, `left_arm_motor`, `right_arm_motor`, `left_arm_end`, `right_arm_end`, `left_grip_motor`, `right_grip_motor`, `obj_pose`, `head_color`, `head_depth`, `left_color`, `left_depth`, `right_color`, `right_depth` | `left_arm_cmd`, `right_arm_cmd`, `left_grip_cmd`, `right_grip_cmd` |
 
 ## Installation
 
@@ -28,8 +28,8 @@ nodes:
     path: hex-dora-mujoco-archer-y6
     inputs:
       tick: dora/timer/millis/2
-      arm_pos_cmd: planner/arm_pos_cmd
-      grip_pos_cmd: planner/grip_pos_cmd
+      arm_cmd: test_mujoco_archer_y6/arm_cmd
+      grip_cmd: test_mujoco_archer_y6/grip_cmd
     outputs:
       - arm_motor
       - arm_end
@@ -60,8 +60,13 @@ nodes:
       obj_pose: mujoco_archer_y6/obj_pose
       color: mujoco_archer_y6/color
       depth: mujoco_archer_y6/depth
+    outputs:
+      - arm_cmd
+      - grip_cmd
     env:
       NODE_NAME: test_mujoco_archer_y6
+      ARM_CTRL_MODE: pos
+      GRIP_CTRL_MODE: pos
 ```
 
 ### E3 Desktop
@@ -73,10 +78,10 @@ nodes:
     path: hex-dora-mujoco-e3-desktop
     inputs:
       tick: dora/timer/millis/2
-      left_arm_pos_cmd: planner/left_arm_pos_cmd
-      right_arm_pos_cmd: planner/right_arm_pos_cmd
-      left_grip_pos_cmd: planner/left_grip_pos_cmd
-      right_grip_pos_cmd: planner/right_grip_pos_cmd
+      left_arm_cmd: test_mujoco_e3_desktop/left_arm_cmd
+      right_arm_cmd: test_mujoco_e3_desktop/right_arm_cmd
+      left_grip_cmd: test_mujoco_e3_desktop/left_grip_cmd
+      right_grip_cmd: test_mujoco_e3_desktop/right_grip_cmd
     outputs:
       - left_arm_motor
       - right_arm_motor
@@ -123,8 +128,15 @@ nodes:
       left_depth: mujoco_e3_desktop/left_depth
       right_color: mujoco_e3_desktop/right_color
       right_depth: mujoco_e3_desktop/right_depth
+    outputs:
+      - left_arm_cmd
+      - right_arm_cmd
+      - left_grip_cmd
+      - right_grip_cmd
     env:
       NODE_NAME: test_mujoco_e3_desktop
+      ARM_CTRL_MODE: pos
+      GRIP_CTRL_MODE: pos
 ```
 
 ## Inputs
@@ -143,39 +155,52 @@ nodes:
 
 ### Arm Commands (Archer Y6)
 
-| Input | Fields | Description |
+| Input | Description |
+| --- | --- |
+| `arm_cmd` | Arm command (type determined by `type` field) |
+
+Command `type` and corresponding fields:
+
+| `type` | Fields | Description |
 | --- | --- | --- |
-| `arm_mit_cmd` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT torque command for arm |
-| `arm_mit_comp_cmd` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT command with gravity/friction compensation |
-| `arm_pos_cmd` | `q_tar(6)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Joint position command for arm |
-| `arm_pose_cmd` | `pos(3)`, `quat(4)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Cartesian pose command for arm |
+| `mit` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT torque command |
+| `mit_comp` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT command with gravity/friction compensation |
+| `pos` | `q_tar(6)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Joint position command |
+| `pose` | `pos(3)`, `quat(4)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Cartesian pose command |
 
 ### Grip Commands (Archer Y6)
 
-| Input | Fields | Description |
+| Input | Description |
+| --- | --- |
+| `grip_cmd` | Grip command (type determined by `type` field) |
+
+Command `type` and corresponding fields:
+
+| `type` | Fields | Description |
 | --- | --- | --- |
-| `grip_mit_cmd` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT torque command for grip |
-| `grip_mit_comp_cmd` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT command with friction compensation |
-| `grip_pos_cmd` | `q_tar(1)`, `kp(1)`, `kd(1)`, `err_limit(1)` | Joint position command for grip |
+| `mit` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT torque command |
+| `mit_comp` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT command with friction compensation |
+| `pos` | `q_tar(1)`, `kp(1)`, `kd(1)`, `err_limit(1)` | Joint position command |
 
 ### Arm Commands (E3 Desktop)
 
-| Input | Fields | Description |
-| --- | --- | --- |
-| `left_arm_mit_cmd` / `right_arm_mit_cmd` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT torque command for left/right arm |
-| `left_arm_mit_comp_cmd` / `right_arm_mit_comp_cmd` | `q_tar(6)`, `dq_tar(6)`, `tau(6)`, `kp(6)`, `kd(6)` | MIT command with gravity/friction compensation |
-| `left_arm_pos_cmd` / `right_arm_pos_cmd` | `q_tar(6)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Joint position command for left/right arm |
-| `left_arm_pose_cmd` / `right_arm_pose_cmd` | `pos(3)`, `quat(4)`, `kp(6)`, `kd(6)`, `err_limit(1)` | Cartesian pose command for left/right arm |
+| Input | Description |
+| --- | --- |
+| `left_arm_cmd` / `right_arm_cmd` | Arm command for left/right arm (type determined by `type` field) |
+
+Command `type` and corresponding fields: same as [Arm Commands (Archer Y6)](#arm-commands-archer-y6).
 
 ### Grip Commands (E3 Desktop)
 
-| Input | Fields | Description |
-| --- | --- | --- |
-| `left_grip_mit_cmd` / `right_grip_mit_cmd` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT torque command for left/right grip |
-| `left_grip_mit_comp_cmd` / `right_grip_mit_comp_cmd` | `q_tar(1)`, `dq_tar(1)`, `tau(1)`, `kp(1)`, `kd(1)` | MIT command with friction compensation |
-| `left_grip_pos_cmd` / `right_grip_pos_cmd` | `q_tar(1)`, `kp(1)`, `kd(1)`, `err_limit(1)` | Joint position command for left/right grip |
+| Input | Description |
+| --- | --- |
+| `left_grip_cmd` / `right_grip_cmd` | Grip command for left/right grip (type determined by `type` field) |
+
+Command `type` and corresponding fields: same as [Grip Commands (Archer Y6)](#grip-commands-archer-y6).
 
 ### Test Nodes (Archer Y6)
+
+Inputs:
 
 | Input | Type | Description |
 | --- | --- | --- |
@@ -187,7 +212,16 @@ nodes:
 | `color` | Arrow array | Color image |
 | `depth` | Arrow array | Depth image |
 
+Outputs:
+
+| Output | Type | Description |
+| --- | --- | --- |
+| `arm_cmd` | Arrow array | Arm command (type based on `ARM_CTRL_MODE`) |
+| `grip_cmd` | Arrow array | Grip command (type based on `GRIP_CTRL_MODE`) |
+
 ### Test Nodes (E3 Desktop)
+
+Inputs:
 
 | Input | Type | Description |
 | --- | --- | --- |
@@ -198,6 +232,13 @@ nodes:
 | `obj_pose` | Arrow array | Object pose |
 | `head_color` / `left_color` / `right_color` | Arrow array | Color image |
 | `head_depth` / `left_depth` / `right_depth` | Arrow array | Depth image |
+
+Outputs:
+
+| Output | Type | Description |
+| --- | --- | --- |
+| `left_arm_cmd` / `right_arm_cmd` | Arrow array | Arm command (type based on `ARM_CTRL_MODE`) |
+| `left_grip_cmd` / `right_grip_cmd` | Arrow array | Grip command (type based on `GRIP_CTRL_MODE`) |
 
 ## Outputs
 
@@ -263,7 +304,7 @@ cmd = {
     "err_limit": np.array([0.03]),
 }
 storage, metadata = dict_encode(["q_tar", "kp", "kd", "err_limit"], cmd, event["metadata"])
-node.send_output("arm_pos_cmd", storage, metadata)
+node.send_output("arm_cmd", storage, metadata)
 ```
 
 ## Environment Variables
@@ -301,6 +342,8 @@ node.send_output("arm_pos_cmd", storage, metadata)
 | Variable | Type | Default | Description |
 | --- | --- | --- | --- |
 | `NODE_NAME` | `str` | `""` | Dora node name |
+| `ARM_CTRL_MODE` | `str` | `pos` | Arm control mode: `mit`, `mit_comp`, `pos`, or `pose` |
+| `GRIP_CTRL_MODE` | `str` | `pos` | Grip control mode: `mit`, `mit_comp`, or `pos` |
 
 ## License
 

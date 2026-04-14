@@ -23,7 +23,7 @@ def state_func(sim, raw_meta, node):
             storage, metadata = dict_encode(
                 ["pos", "vel", "eff"],
                 arm_motor,
-                raw_meta,
+                dict(raw_meta),
             )
             node.send_output(f"{side}_arm_motor", storage, metadata)
 
@@ -32,7 +32,7 @@ def state_func(sim, raw_meta, node):
             storage, metadata = dict_encode(
                 ["pos", "quat"],
                 arm_end,
-                raw_meta,
+                dict(raw_meta),
             )
             node.send_output(f"{side}_arm_end", storage, metadata)
 
@@ -41,7 +41,7 @@ def state_func(sim, raw_meta, node):
             storage, metadata = dict_encode(
                 ["pos", "vel", "eff"],
                 grip_motor,
-                raw_meta,
+                dict(raw_meta),
             )
             node.send_output(f"{side}_grip_motor", storage, metadata)
 
@@ -50,7 +50,7 @@ def state_func(sim, raw_meta, node):
         obj_pose_storage, obj_pose_metadata = dict_encode(
             ["pos", "quat"],
             obj_pose,
-            raw_meta,
+            dict(raw_meta),
         )
         node.send_output("obj_pose", obj_pose_storage, obj_pose_metadata)
 
@@ -61,14 +61,14 @@ def cam_encode_func(sim, raw_meta, color_encoding, depth_encoding):
         color_frame = getattr(sim, f"get_{side}_color_img")(latest=True)
         if color_frame is not None:
             color = color_frame["data"]
-            storage, metadata = color_encode(color, color_encoding, raw_meta)
+            storage, metadata = color_encode(color, color_encoding, dict(raw_meta))
             if storage is not None:
                 results.append((f"{side}_color", storage, metadata))
 
         depth_frame = getattr(sim, f"get_{side}_depth_img")(latest=True)
         if depth_frame is not None:
             depth = depth_frame["data"]
-            storage, metadata = depth_encode(depth, depth_encoding, raw_meta)
+            storage, metadata = depth_encode(depth, depth_encoding, dict(raw_meta))
             if storage is not None:
                 results.append((f"{side}_depth", storage, metadata))
     return results
@@ -83,14 +83,14 @@ def cmd_func(sim, arm_deque_dict, grip_deque_dict):
             except IndexError:
                 break
         if last_arm_cmd is not None:
-            if last_arm_cmd[0] == "mit":
-                getattr(sim, f"set_{side}_arm_mit_cmd")(last_arm_cmd[1])
-            elif last_arm_cmd[0] == "mit_comp":
-                getattr(sim, f"set_{side}_arm_mit_comp_cmd")(last_arm_cmd[1])
-            elif last_arm_cmd[0] == "pos":
-                getattr(sim, f"set_{side}_arm_pos_cmd")(last_arm_cmd[1])
-            elif last_arm_cmd[0] == "pose":
-                getattr(sim, f"set_{side}_arm_pose_cmd")(last_arm_cmd[1])
+            if last_arm_cmd["type"] == "mit":
+                getattr(sim, f"set_{side}_arm_mit_cmd")(last_arm_cmd)
+            elif last_arm_cmd["type"] == "mit_comp":
+                getattr(sim, f"set_{side}_arm_mit_comp_cmd")(last_arm_cmd)
+            elif last_arm_cmd["type"] == "pos":
+                getattr(sim, f"set_{side}_arm_pos_cmd")(last_arm_cmd)
+            elif last_arm_cmd["type"] == "pose":
+                getattr(sim, f"set_{side}_arm_pose_cmd")(last_arm_cmd)
 
         last_grip_cmd = None
         while True:
@@ -99,12 +99,12 @@ def cmd_func(sim, arm_deque_dict, grip_deque_dict):
             except IndexError:
                 break
         if last_grip_cmd is not None:
-            if last_grip_cmd[0] == "grip_mit":
-                getattr(sim, f"set_{side}_grip_mit_cmd")(last_grip_cmd[1])
-            elif last_grip_cmd[0] == "grip_mit_comp":
-                getattr(sim, f"set_{side}_grip_mit_comp_cmd")(last_grip_cmd[1])
-            elif last_grip_cmd[0] == "grip_pos":
-                getattr(sim, f"set_{side}_grip_pos_cmd")(last_grip_cmd[1])
+            if last_grip_cmd["type"] == "mit":
+                getattr(sim, f"set_{side}_grip_mit_cmd")(last_grip_cmd)
+            elif last_grip_cmd["type"] == "mit_comp":
+                getattr(sim, f"set_{side}_grip_mit_comp_cmd")(last_grip_cmd)
+            elif last_grip_cmd["type"] == "pos":
+                getattr(sim, f"set_{side}_grip_pos_cmd")(last_grip_cmd)
 
 
 def main():
@@ -163,61 +163,21 @@ def main():
                             depth_encoding)
                     cmd_func(sim, arm_deque_dict, grip_deque_dict)
 
-                elif event_id == "left_arm_mit_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["left"].append(("mit", cmd))
+                elif event_id == "left_arm_cmd":
+                    arm_deque_dict["left"].append(
+                        dict_decode(event["value"], event["metadata"]))
 
-                elif event_id == "left_arm_mit_comp_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["left"].append(("mit_comp", cmd))
+                elif event_id == "right_arm_cmd":
+                    arm_deque_dict["right"].append(
+                        dict_decode(event["value"], event["metadata"]))
 
-                elif event_id == "left_arm_pos_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["left"].append(("pos", cmd))
+                elif event_id == "left_grip_cmd":
+                    grip_deque_dict["left"].append(
+                        dict_decode(event["value"], event["metadata"]))
 
-                elif event_id == "left_arm_pose_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["left"].append(("pose", cmd))
-
-                elif event_id == "right_arm_mit_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["right"].append(("mit", cmd))
-
-                elif event_id == "right_arm_mit_comp_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["right"].append(("mit_comp", cmd))
-
-                elif event_id == "right_arm_pos_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["right"].append(("pos", cmd))
-
-                elif event_id == "right_arm_pose_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    arm_deque_dict["right"].append(("pose", cmd))
-
-                elif event_id == "left_grip_mit_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["left"].append(("grip_mit", cmd))
-
-                elif event_id == "left_grip_mit_comp_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["left"].append(("grip_mit_comp", cmd))
-
-                elif event_id == "left_grip_pos_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["left"].append(("grip_pos", cmd))
-
-                elif event_id == "right_grip_mit_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["right"].append(("grip_mit", cmd))
-
-                elif event_id == "right_grip_mit_comp_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["right"].append(("grip_mit_comp", cmd))
-
-                elif event_id == "right_grip_pos_cmd":
-                    cmd = dict_decode(event["value"], event["metadata"])
-                    grip_deque_dict["right"].append(("grip_pos", cmd))
+                elif event_id == "right_grip_cmd":
+                    grip_deque_dict["right"].append(
+                        dict_decode(event["value"], event["metadata"]))
 
                 elif event_id == "reset":
                     sim.reset()
